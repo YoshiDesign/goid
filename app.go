@@ -49,6 +49,8 @@ func main() {
 
     // Initialize the Gin router
     router := gin.Default()
+    router.Use(goid.VerifyCertificateMiddleware())
+    router.Use(goid.LogMiddleware())
 
 	// Define a handler function for a GET request to the root URL
 	router.GET("/", func(c *gin.Context) {
@@ -60,8 +62,8 @@ func main() {
 			c.AbortWithError(http.StatusInternalServerError, err)
 			return
 		}
-        fmt.Println("Client Requested: ", c.Response.URL)
-        fmt.Println("Host: ", c.Response.Host)
+        // fmt.Println("Client Requested: ", c.Response.URL)
+        // fmt.Println("Host: ", c.Response.Host)
 
         // Get the TLS connection state
         // state, ok := r.TLS
@@ -91,8 +93,8 @@ func main() {
 			c.AbortWithError(http.StatusInternalServerError, err)
 			return
 		}
-        fmt.Println(resp.Body)
-        fmt.Println(body)
+        // fmt.Println(resp.Body)
+        // fmt.Println(body)
         //return c.IndentedJSON(http.StatusOK, body)
 	})
 
@@ -150,7 +152,7 @@ func main() {
     })
 
     // Start the server
-    err = router.Run(":8080")
+    err = router.Run(":8081")
     if err != nil {
         panic(err)
     }
