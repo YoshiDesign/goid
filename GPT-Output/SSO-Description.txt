@@ -1,0 +1,21 @@
+To create a minimum viable Single Sign-On (SSO) system for connecting web apps with a common authentication service, you would need to implement the following major components:
+
+Identity Provider (IdP): This is the central authentication service that manages user accounts, credentials, and authentication processes. It handles user authentication, issues access tokens, and validates user sessions.
+
+Authentication Protocols: Choose a standard authentication protocol such as OAuth 2.0 or OpenID Connect (built on top of OAuth 2.0) to facilitate the authentication and authorization flows between the apps and the IdP.
+
+User Database: Set up a user database to store user account information, including usernames, passwords (preferably hashed), and any additional user attributes you require.
+
+Access Tokens: Implement a mechanism to generate and manage access tokens. These tokens are issued by the IdP upon successful authentication and are used by the apps to authenticate and authorize subsequent requests.
+
+Registering Apps: Provide a way for apps to register with the SSO system. This could involve generating client credentials (client ID and client secret) for each app and defining the app's redirect URL(s) for the authentication flow.
+
+Single Sign-On Endpoint: Create an endpoint where users can initiate the authentication process. This endpoint will handle user authentication and, upon successful authentication, issue the access token to the app.
+
+Token Validation Endpoint: Implement an endpoint that the apps can use to validate access tokens and ensure their authenticity and integrity. This endpoint should verify the token's signature, expiration, and other relevant claims.
+
+User Session Management: Maintain user sessions to keep track of logged-in users across different apps. This could involve using cookies or other session management techniques.
+
+Security Considerations: Implement security measures to protect the SSO system from common exploits such as cross-site request forgery (CSRF), cross-site scripting (XSS), session hijacking, and token-related attacks. Employ secure communication protocols (e.g., HTTPS) and follow security best practices throughout the system.
+
+Remember, this is just a high-level overview, and each component requires careful implementation and consideration of your specific requirements and technologies.

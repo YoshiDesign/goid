@@ -1,0 +1,13 @@
+Earlier you wrote a Gin handler function for the authentication endpoint, here is its signature:
+func handleAuth(c *gin.Context). You'll notice that it uses the Gin framework, can you rewrite it in a way that would be compatible with the Chi framework instead?
+...
+With the information in previous responses, generate the code required to start a server that listens to port 80, with the Chi framework. This server exposes the following API endpoints, each of their function bodies can simply say //TODO for now: 
+
+/login - This will extract a username and password query parameter from an incoming POST request
+/logout - The function body can be omitted, for now  
+...
+
+Now, complete the /login route. Extract the POST parameters and call the handleAuth() function you wrote previously. We can modify the handleAuth function's signature since it will no longer require the Gin context parameter; it is already available in to the "/login" route's callback function.
+
+...
+

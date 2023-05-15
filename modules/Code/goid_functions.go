@@ -6,6 +6,7 @@ import (
     "fmt"
     "database/sql"
     "golang.org/x/crypto/bcrypt"
+    "net/http"
 )
 
 // Struct representing a user record in the database
@@ -15,6 +16,27 @@ type User struct {
     Email  string
 	Password []byte
     Token string
+}
+
+func HomeCheck(w http.ResponseWriter, r *http.Request) {
+    // Send an HTTPS GET request to the server
+    // resp, err := client.Get("http://myworldworks.com")
+    // if err != nil {
+    //     fmt.Println("Oh noes!")
+    //     fmt.Println(err)
+    //     c.AbortWithError(http.StatusInternalServerError, err)
+    //     return
+    // }
+    // fmt.Println("Client Requested: ", c.Response.URL)
+    // fmt.Println("Host: ", c.Response.Host)
+
+    // Get the TLS connection state
+    // state, ok := r.TLS
+    // if !ok {
+    //     http.Error(w, "No TLS connection", http.StatusBadRequest)
+    //     return
+    // }
+
 }
 
 // Function to generate a 21-byte access token and store it in the database
@@ -35,6 +57,8 @@ func GenerateAccessToken(db *sql.DB, userID int) (string, error) {
 
     return token, nil
 }
+
+
 
 // Function to authenticate a user and generate an access token
 func AuthenticateUser(db *sql.DB, email string, password string) (string, error) {

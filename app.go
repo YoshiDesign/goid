@@ -5,7 +5,8 @@ import (
     "database/sql"
     "crypto/tls"
 	"net/http"
-    "github.com/gin-gonic/gin"
+    "github.com/go-chi/chi/v5"
+    //"github.com/go-chi/chi/v5/middleware"
 	"fmt"
     "io"
 	_ "github.com/go-sql-driver/mysql"
@@ -24,7 +25,7 @@ func main() {
     // }
 
     // Connect to the database - Currently uses a remote DB host (Local VM - Homestead)
-    db, err := sql.Open("mysql", "homestead:secret@tcp(192.168.10.10:3306)/newtree")
+    db, err := sql.Open("mysql", "root:password@tcp(127.0.0.1:3306)/newtree")
     if err != nil {
         panic(err)
     }
@@ -48,57 +49,14 @@ func main() {
 	}
 
     // Initialize the Gin router
-    router := gin.Default()
-    router.Use(goid.VerifyCertificateMiddleware())
-    router.Use(goid.LogMiddleware())
+    router := chi.NewRouter()
+    //router.Use(goid.VerifyCertificateMiddleware())
+    //router.Use(goid.LogMiddleware())
 
 	// Define a handler function for a GET request to the root URL
-	router.GET("/", func(c *gin.Context) {
-		// Send an HTTPS GET request to the server
-		resp, err := client.Get("http://myworldworks.com")
-		if err != nil {
-            fmt.Println("Oh noes!")
-            fmt.Println(err)
-			c.AbortWithError(http.StatusInternalServerError, err)
-			return
-		}
-        // fmt.Println("Client Requested: ", c.Response.URL)
-        // fmt.Println("Host: ", c.Response.Host)
+	router.Get("/", goid.HomeCheck)
 
-        // Get the TLS connection state
-        // state, ok := r.TLS
-        // if !ok {
-        //     http.Error(w, "No TLS connection", http.StatusBadRequest)
-        //     return
-        // }
-
-        fmt.Println("Get Anthony Lyristis.com")
-
-        body, err := io.ReadAll(resp.Body)
-        if err != nil {
-            // log.Fatal(err)
-        }
-
-        fmt.Printf("Code: %d\n", resp.StatusCode)
-        fmt.Printf("Body: %s\n", body)
-
-		// Copy the response body to the Gin context
-		defer resp.Body.Close()
-
-		c.Writer.WriteHeader(resp.StatusCode)
-		_, err = io.Copy(c.Writer, resp.Body)
-		if err != nil {
-            fmt.Println("Oh noes again!")
-            fmt.Println(err)
-			c.AbortWithError(http.StatusInternalServerError, err)
-			return
-		}
-        // fmt.Println(resp.Body)
-        // fmt.Println(body)
-        //return c.IndentedJSON(http.StatusOK, body)
-	})
-
-	router.GET("/check-user", func(c *gin.Context) {
+	router.Get("/check-user", func(w http.ResponseWriter, r *http.Request) {
 		var user goid.User
 	
 		err := db.QueryRow("SELECT id, name, email, password, token FROM users WHERE email = ?", "anthony@mail.com").Scan(&user.ID, &user.Name, &user.Email, &user.Password, &user.Token)
@@ -110,43 +68,40 @@ func main() {
 		fmt.Println("ID:", user.ID)
 		fmt.Println("Name:", user.Name)
 		fmt.Println("Email:", user.Email)
+        fmt.Println("Password:", user.Password)
+        fmt.Println("Token:", user.Token)
 
 	})
 
 	/**
 		Login
 	 */
-    router.POST("/login", func(c *gin.Context) {
-        // Extract the username and password from the request body
-        var reqBody struct {
-            Username string `form:"email" json:"username"`
-            Password string `form:"password" json:"password"`
-        }
-        if err := c.ShouldBindJSON(&reqBody); err != nil {
-            c.JSON(400, gin.H{"error": "Invalid request body"})
-            return
-        }
+    router.Post("/login", func (w http.ResponseWriter, r *http.Request) {
 
-		fmt.Println(reqBody.Username)
-		fmt.Println(reqBody.Password)
-
-        // Authenticate the user
-        token, err := goid.AuthenticateUser(db, reqBody.Username, reqBody.Password)
-        if err != nil {
-			fmt.Println(err)
-            c.JSON(401, gin.H{"error": "Invalid username or password"})
-            return
+        // Extract username and password from the request
+        email := r.FormValue("email")
+        password := r.FormValue("password")
+        fmt.Println(email)
+        fmt.Println(password)
+        // Authenticate the user and perform necessary checks
+        // ...
+        AuthenticateUser(db, email, password)
+        // Return the access token in the response
+        response := struct {
+            Token string `json:"token"`
+        }{
+            Token: accessToken,
         }
-
-        // Return the access token to the client
-        c.JSON(200, gin.H{"token": token})
+    
+        w.Header().Set("Content-Type", "application/json")
+        json.NewEncoder(w).Encode(response)
     })
 
 
 	/**
 		Logout
 	 */
-    router.GET("/logout", func(c *gin.Context) {
+    router.Get("/logout", func(c *gin.Context) {
         // TODO: Invalidate the access token for the current user
         c.JSON(200, gin.H{})
     })
