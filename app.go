@@ -3,12 +3,13 @@ package main
 import (
 	"www.github.com/goid/modules/Code"
     "database/sql"
-    "crypto/tls"
+    //"crypto/tls"
 	"net/http"
+    "encoding/json"
     "github.com/go-chi/chi/v5"
     //"github.com/go-chi/chi/v5/middleware"
 	"fmt"
-    "io"
+    //"io"
 	_ "github.com/go-sql-driver/mysql"
 	// "os"
 )
@@ -37,16 +38,16 @@ func main() {
     defer db.Close()
 
     // Create a new http.Transport with TLS settings
-	tr := &http.Transport{
-		TLSClientConfig: &tls.Config{
-			InsecureSkipVerify: false, // InsecureSkipVerify should be set to false in production
-		},
-	}
+	// tr := &http.Transport{
+	// 	TLSClientConfig: &tls.Config{
+	// 		InsecureSkipVerify: false, // InsecureSkipVerify should be set to false in production
+	// 	},
+	// }
 
 	// Create a new http.Client using the transport
-	client := &http.Client{
-		Transport: tr,
-	}
+	// client := &http.Client{
+	// 	Transport: tr,
+	// }
 
     // Initialize the Gin router
     router := chi.NewRouter()
@@ -85,12 +86,15 @@ func main() {
         fmt.Println(password)
         // Authenticate the user and perform necessary checks
         // ...
-        AuthenticateUser(db, email, password)
-        // Return the access token in the response
+        token, err := goid.AuthenticateUser(db, email, password)
+        if err != nil {
+            fmt.Println("Error:", err)
+        } 
+                // Return the access token in the response
         response := struct {
             Token string `json:"token"`
         }{
-            Token: accessToken,
+            Token: token,
         }
     
         w.Header().Set("Content-Type", "application/json")
@@ -101,14 +105,11 @@ func main() {
 	/**
 		Logout
 	 */
-    router.Get("/logout", func(c *gin.Context) {
+    router.Get("/logout", func(w http.ResponseWriter, r *http.Request) {
         // TODO: Invalidate the access token for the current user
-        c.JSON(200, gin.H{})
+        //c.JSON(200, gin.H{})
     })
 
     // Start the server
-    err = router.Run(":8081")
-    if err != nil {
-        panic(err)
-    }
+    http.ListenAndServe(":8081", router)
 }
