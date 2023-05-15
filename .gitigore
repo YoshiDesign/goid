@@ -1,1 +1,4 @@
 *.exe
+.env
+GPT-Output/
+var/
