@@ -7,6 +7,7 @@ import (
     "database/sql"
     "golang.org/x/crypto/bcrypt"
     "net/http"
+    "errors"
 )
 
 // Struct representing a user record in the database
@@ -19,6 +20,9 @@ type User struct {
 }
 
 func HomeCheck(w http.ResponseWriter, r *http.Request) {
+
+    fmt.Println("/")
+    fmt.Println(r.URL)
     // Send an HTTPS GET request to the server
     // resp, err := client.Get("http://myworldworks.com")
     // if err != nil {
@@ -36,7 +40,7 @@ func HomeCheck(w http.ResponseWriter, r *http.Request) {
     //     http.Error(w, "No TLS connection", http.StatusBadRequest)
     //     return
     // }
-
+   
 }
 
 // Function to generate a 21-byte access token and store it in the database
@@ -70,6 +74,8 @@ func AuthenticateUser(db *sql.DB, email string, password string) (string, error)
         return "nil", err
     }
 
+    fmt.Println("Comparing hash/pass")
+
     // Verify the password hash
     err = bcrypt.CompareHashAndPassword(user.Password, []byte(password))
     if err != nil {
@@ -90,9 +96,49 @@ func AuthenticateUser(db *sql.DB, email string, password string) (string, error)
         return "nil", err
     }
 
-	fmt.Println("Token has been updated.", token)
+	fmt.Println("New Token:\t", token)
 
     // Set the token in the user struct and return it
     user.Token = token
     return token, nil
+}
+
+func VerifyToken(db *sql.DB, email string, token string) (*User, error) {
+	// Parse the request body to retrieve the email and token
+
+	// Look up the user in the database based on the email address
+	user, err := GetUserByEmail(db, email)
+	if err != nil {
+		// Handle the error, e.g., return an appropriate response
+		return nil, errors.New("Failed to retrieve user...")
+	}
+
+	// Verify the token against the user's record
+	if user.Token != token {
+		return nil, errors.New("Error: Token mismatch...")
+	}
+
+	// Token is valid, proceed with further actions
+	// ...
+
+	// Send a success response
+	fmt.Println("Token verification successful")
+    return user, nil
+}
+
+// Fetch a user from the DB
+func GetUserByEmail(db *sql.DB, email string) (*User, error) {
+    var user *User
+
+    err := db.QueryRow("SELECT id, name, email, password, token FROM users WHERE email = ?", email).Scan(&user.ID, &user.Name, &user.Email, &user.Password, &user.Token)
+    if err != nil {
+        fmt.Println(err)
+        return nil, fmt.Errorf("User not found")
+    }
+
+
+	return user, nil
+
+    // return nil, fmt.Errorf("User not found")
+	
 }

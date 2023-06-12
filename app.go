@@ -6,7 +6,9 @@ import (
     //"crypto/tls"
 	"net/http"
     "encoding/json"
+    "golang.org/x/crypto/bcrypt"
     "github.com/go-chi/chi/v5"
+    "time"
     //"github.com/go-chi/chi/v5/middleware"
 	"fmt"
     //"io"
@@ -26,7 +28,7 @@ func main() {
     // }
 
     // Connect to the database - Currently uses a remote DB host (Local VM - Homestead)
-    db, err := sql.Open("mysql", "root:password@tcp(127.0.0.1:3306)/newtree")
+    db, err := sql.Open("mysql", "root:password@tcp(127.0.0.1:3306)/goid")
     if err != nil {
         panic(err)
     }
@@ -76,31 +78,105 @@ func main() {
 
 	/**
 		Login
+        Requires JSON body, no query params
 	 */
     router.Post("/login", func (w http.ResponseWriter, r *http.Request) {
+        
+        var login goid.LoginRequest
+        err := json.NewDecoder(r.Body).Decode(&login)
+        fmt.Println(login.Email)
+        fmt.Println(login.Password)
 
-        // Extract username and password from the request
-        email := r.FormValue("email")
-        password := r.FormValue("password")
-        fmt.Println(email)
-        fmt.Println(password)
         // Authenticate the user and perform necessary checks
-        // ...
-        token, err := goid.AuthenticateUser(db, email, password)
+        token, err := goid.AuthenticateUser(db, login.Email, login.Password)
         if err != nil {
             fmt.Println("Error:", err)
+            return
         } 
-                // Return the access token in the response
+
+        w.Header().Set("Access-Control-Allow-Origin", "*")
+        w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+        w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
+
+        // Return the access token in the response
         response := struct {
             Token string `json:"token"`
         }{
             Token: token,
         }
-    
+
+        cookie := http.Cookie{
+			Name:     "goid_token",
+			Value:    "example value",
+			HttpOnly: true,
+            Domain: "localhost",
+            Secure: false,
+            Path: "/",
+            MaxAge: 0,
+            Expires: time.Now().Add(10000),
+            SameSite: http.SameSiteLaxMode,
+		}
+        
+        http.SetCookie(w, &cookie)
         w.Header().Set("Content-Type", "application/json")
         json.NewEncoder(w).Encode(response)
     })
 
+    router.Post("/getCookies", func(w http.ResponseWriter, r *http.Request) {
+        cookie := http.Cookie{
+			Name:     "goid_token",
+			Value:    "example value",
+			HttpOnly: true,
+            Domain: "127.0.0.1",
+            Secure: false,
+            Path: "/",
+            MaxAge: 0,
+            Expires: time.Now().Add(10000),
+            SameSite: http.SameSiteLaxMode,
+		}
+        
+        http.SetCookie(w, &cookie)
+    })
+
+    router.Post("/verifyToken", func(w http.ResponseWriter, r *http.Request) {
+        var verify goid.VerifyRequest
+        err := json.NewDecoder(r.Body).Decode(&verify)
+        user, err := goid.VerifyToken(db, verify.Email, verify.Token)
+        if err != nil {
+            http.Error(w, "Failed to retrieve user", http.StatusInternalServerError)
+            return
+        }
+        w.Header().Set("Content-Type", "application/json")
+
+        response := struct {
+            User_id int `json:"user_id"`
+            Token string `json:"token"`
+        }{
+            User_id: user.ID,
+            Token: user.Token,
+        }
+
+        json.NewEncoder(w).Encode(response)
+    })
+
+    router.Post("/bcrypt", func (w http.ResponseWriter, r *http.Request) {
+
+        // Extract username and password from the request
+        message := r.FormValue("pass")
+        hashedBytes, err := bcrypt.GenerateFromPassword([]byte(message), bcrypt.DefaultCost)
+        if err != nil {
+            fmt.Println("Error:",err)
+        }
+        w.Write([]byte(fmt.Sprintf("hashed:%s", hashedBytes)))
+    })
+
+    router.Post("/securekey", func (w http.ResponseWriter, r *http.Request) {
+        key, err := goid.GenerateSecureKey(128)
+        if err != nil {
+            //
+        }
+        w.Write([]byte(fmt.Sprintf("key:%s", key)))
+    })
 
 	/**
 		Logout
@@ -112,4 +188,6 @@ func main() {
 
     // Start the server
     http.ListenAndServe(":8081", router)
+    //http.ListenAndServeTLS(":8081", "/home/yoshi/.ssh/newcert.pem", "/home/yoshi/.ssh/newkey.pem", router)
+
 }
