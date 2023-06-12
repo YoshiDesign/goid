@@ -105,6 +105,9 @@ func main() {
             Token: token,
         }
 
+        /**
+        * In production the Id-P is responsible for the Set-Cookie headers
+        */
         cookie := http.Cookie{
 			Name:     "goid_token",
 			Value:    "example value",
@@ -130,12 +133,29 @@ func main() {
             Domain: "127.0.0.1",
             Secure: false,
             Path: "/",
-            MaxAge: 0,
+            MaxAge: 1,
             Expires: time.Now().Add(10000),
             SameSite: http.SameSiteLaxMode,
 		}
         
         http.SetCookie(w, &cookie)
+    })
+
+    router.Get("/getCookies", func(w http.ResponseWriter, r *http.Request) {
+        cookie := http.Cookie{
+			Name:     "goid_token",
+			Value:    "example value",
+			HttpOnly: true,
+            Domain: "127.0.0.1",
+            Secure: false,
+            Path: "/",
+            MaxAge: 1,
+            Expires: time.Now().Add(10000),
+            SameSite: http.SameSiteLaxMode,
+		}
+        
+        http.SetCookie(w, &cookie)
+        w.Write([]byte(fmt.Sprintf("Hello")))
     })
 
     router.Post("/verifyToken", func(w http.ResponseWriter, r *http.Request) {
