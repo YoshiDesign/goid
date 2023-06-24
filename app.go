@@ -198,6 +198,60 @@ func main() {
         w.Write([]byte(fmt.Sprintf("key:%s", key)))
     })
 
+    router.Post("/users/register", registerUser)
+
+    func registerUser(w http.ResponseWriter, r *http.Request) {
+        // Check the authorization header
+        authHeader := r.Header.Get("Authorization")
+        if !isAuthorized(authHeader) {
+            w.WriteHeader(http.StatusUnauthorized)
+            return
+        }
+    
+        // Parse the request body
+        var user User
+        err := json.NewDecoder(r.Body).Decode(&user)
+        if err != nil {
+            w.WriteHeader(http.StatusBadRequest)
+            return
+        }
+    
+        // Validate email format
+        if !isValidEmail(user.Email) {
+            w.WriteHeader(http.StatusBadRequest)
+            fmt.Fprintf(w, "Invalid email format")
+            return
+        }
+    
+        // Check if password and confirm_password match
+        if user.Password != user.ConfirmPassword {
+            w.WriteHeader(http.StatusBadRequest)
+            fmt.Fprintf(w, "Passwords do not match")
+            return
+        }
+    
+        // Registration successful
+        w.WriteHeader(http.StatusCreated)
+        fmt.Fprintf(w, "User registered successfully")
+    }
+    
+    func isAuthorized(authHeader string) bool {
+        // TODO: Implement your authorization logic here
+        // You can check if the authHeader is valid and matches your expected format
+        // For example, you might check if it contains a valid access token or JWT
+    
+        // Placeholder authorization logic
+        return strings.HasPrefix(authHeader, "Bearer")
+    }
+    
+    func isValidEmail(email string) bool {
+        // Simple email format validation using regex
+        // You can implement more comprehensive email validation if needed
+        emailRegex := `^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$`
+        match, _ := regexp.MatchString(emailRegex, email)
+        return match
+    }
+
 	/**
 		Logout
 	 */
