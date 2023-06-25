@@ -1,48 +1,32 @@
 package goid
 
-// import (
-// 	"time"
-// 	"log"
-// 	"fmt"
-// 	"net/http"
-// )
+import (
+	"os"
+	"net/http"
+	"fmt"
+)
+/**
+ *
+ * Check the authorization header on every request
+ */
+func AuthorizationMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Perform actions before passing the request to the next handler
+		fmt.Println("Middleware executed")
 
-// func LogMiddleware() gin.HandlerFunc {
-//     return func(c *gin.Context) {
-//         startTime := time.Now()
+		if (os.Getenv("APP_LIVE") == "1"){
+			authHeader := r.Header.Get("Authorization")
+			if !IsAuthorized(authHeader) {
+				fmt.Println("Authorization header was found.")
+			} else {
+				fmt.Println("No Authorization header...")
+			}
+		}
 
-//         // Call the next handler
-//         c.Next()
+		// Call the next handler
+		next.ServeHTTP(w, r)
 
-//         // Log the request details
-//         log.Printf("[%s] %s - %v\n", c.Request.Method, c.Request.URL.Path, time.Since(startTime))
-//     }
-// }
-
-// func VerifyCertificateMiddleware() gin.HandlerFunc {
-// 	return func (c *gin.Context) {
-// 		// Retrieve client certificate from request
-// 		tlsConn := c.Request.TLS
-// 		// if !ok {
-// 		// 	c.AbortWithError(http.StatusInternalServerError, fmt.Errorf("could not retrieve TLS connection"))
-// 		// 	return
-// 		// }
-// 		state := tlsConn.ConnectionState()
-// 		if len(state.PeerCertificates) == 0 {
-// 			c.AbortWithError(http.StatusUnauthorized, fmt.Errorf("no client certificate provided"))
-// 			return
-// 		}
-// 		cert := state.PeerCertificates[0]
-
-// 		// Validate certificate
-// 		err := cert.VerifyHostname("example.com")
-// 		if err != nil {
-// 			c.AbortWithError(http.StatusUnauthorized, fmt.Errorf("certificate hostname verification failed: %s", err))
-// 			return
-// 		}
-// 		// ... additional validation logic here ...
-		
-// 		// If we've made it this far, the certificate is valid
-// 		c.Next()
-// 	}
-// }
+		// Perform actions after the request has been handled by subsequent handlers
+		fmt.Println("Middleware finished")
+	})
+}

@@ -4,20 +4,14 @@ import (
     "crypto/rand"
     "encoding/base64"
     "fmt"
+    "strconv"
     "database/sql"
     "golang.org/x/crypto/bcrypt"
     "net/http"
     "errors"
+    "strings"
+    "regexp"
 )
-
-// Struct representing a user record in the database
-type User struct {
-    ID    int
-	Name string
-    Email  string
-	Password []byte
-    Token string
-}
 
 func HomeCheck(w http.ResponseWriter, r *http.Request) {
 
@@ -141,4 +135,133 @@ func GetUserByEmail(db *sql.DB, email string) (*User, error) {
 
     // return nil, fmt.Errorf("User not found")
 	
+}
+
+func CreateUser(db *sql.DB, userRequest UserCreateRequest) error {
+
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(userRequest.Password), bcrypt.DefaultCost)
+	if err != nil {
+        fmt.Println("Failed to hash password:", err.Error())
+		return err
+	}
+
+    name := userRequest.Firstname + " " + userRequest.Lastname
+    // Prepare the insert statement
+	stmt, err := db.Prepare("INSERT INTO users (name, email, password, address_1, address_2, address_3, region_id, region_id_2, phone_number) VALUES (?, ?, ?, ?, ?, ?, ?, ?)")
+	if err != nil {
+		//w.WriteHeader(http.StatusInternalServerError)
+        // TODO Loggin
+		fmt.Println("Failed to insert user into the database:", err.Error())
+		return err
+	}
+	defer stmt.Close()
+
+	// Execute the insert statement
+	_, err = stmt.Exec(
+        name, 
+        userRequest.Email, 
+        hashedPassword,
+        userRequest.AddressOne,
+        userRequest.AddressTwo,
+        userRequest.RegionOne,
+        userRequest.RegionTwo,
+        userRequest.ZipCode,
+        userRequest.SchoolId,
+        userRequest.Phone)
+
+    if err != nil {
+		//w.WriteHeader(http.StatusInternalServerError)
+		fmt.Println("Failed to insert user into the database:", err.Error())
+		return err
+	}
+    return nil
+}
+
+func IsAuthorized(authHeader string) bool {
+    // TODO: Implement your authorization logic here
+    // You can check if the authHeader is valid and matches your expected format
+    // For example, you might check if it contains a valid access token or JWT
+
+    // Placeholder authorization logic
+    return strings.HasPrefix(authHeader, "Bearer")
+}
+
+func IsValidEmail(email string) bool {
+    // Simple email format validation using regex
+    // You can implement more comprehensive email validation if needed
+    emailRegex := `^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$`
+    match, _ := regexp.MatchString(emailRegex, email)
+    return match
+}
+
+func IsValidRegion(number string) bool {
+    // Simple email format validation using regex
+    // You can implement more comprehensive email validation if needed
+    numberRegex := `^[0-9]{1,5}$`
+    match, _ := regexp.MatchString(numberRegex, number)
+    return match
+}
+
+func IsValidAddress(address string) bool {
+    // Simple email format validation using regex
+    // You can implement more comprehensive email validation if needed
+    addressRegex := `^[a-zA-Z0-9,\'\-\s_.\/#\:]+{0,186}$`
+    match, _ := regexp.MatchString(addressRegex, address)
+    return match
+}
+
+func IsValidPassword(password string) bool {
+    // Simple email format validation using regex
+    // You can implement more comprehensive email validation if needed
+    passwordRegex := `^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#.$%^&*])[a-zA-Z\d!@#.$%^&*]{8,50}$`
+    match, _ := regexp.MatchString(passwordRegex, password)
+    return match
+}
+
+func IsValidPhoneNumber(phoneNumber string) bool {
+	// Regular expression pattern for a valid phone number
+	// Adjust the pattern according to your specific phone number format requirements
+	pattern := `^\+[1-9]\d{1,3}[ ]?\(?\d{1,4}\)?[ ]?\d{1,16}$`
+
+	// Create a regular expression object
+	regex := regexp.MustCompile(pattern)
+
+	// Check if the phone number matches the pattern
+	return regex.MatchString(phoneNumber)
+}
+
+func IsValidUserCreateRequest(request UserCreateRequest) (bool, error) {
+    fmt.Println("IsValidUserCreateRequest - Validation Function...")
+    // Validate email format
+    if !IsValidEmail(request.Email) {
+        return false, errors.New("Invalid Stuff")
+    }
+    fmt.Println("1 - Validation Function...")
+    if !IsValidRegion(strconv.Itoa(request.RegionOne)) {
+        return false, errors.New("Invalid Country Selection")
+    }
+    fmt.Println("2 - Validation Function...")
+    if !IsValidRegion(strconv.Itoa(request.RegionTwo)) {
+        return false, errors.New("Invalid Region Selection")
+    }
+    fmt.Println("3 - Validation Function...")
+    if !IsValidAddress(request.AddressOne + " " + request.AddressTwo) {
+        return false, errors.New("Invalid Region Selection")
+    }
+    fmt.Println("4 - Validation Function...")
+    // Validate phone number format
+    if !IsValidPhoneNumber(request.Phone) {
+        return false, errors.New("Invalid Phone Number")
+    }
+    fmt.Println("5 - Validation Function...")
+    if !IsValidPassword(request.Password) {
+        return false, errors.New("Invalid Password")
+    }
+    fmt.Println("6 - Validation Function...")
+    // Check if password and confirm_password match
+    if request.Password != request.PasswordConfirmation {
+        return false, errors.New("Invalid Password Confirmation")
+    }
+    fmt.Println("COMPLETE - Validation Function...")
+    return true, nil
 }

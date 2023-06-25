@@ -13,7 +13,7 @@ import (
 	"fmt"
     //"io"
 	_ "github.com/go-sql-driver/mysql"
-	// "os"
+	"os"
 )
 
 // Main function to start the server
@@ -28,7 +28,7 @@ func main() {
     // }
 
     // Connect to the database - Currently uses a remote DB host (Local VM - Homestead)
-    db, err := sql.Open("mysql", "root:password@tcp(127.0.0.1:3306)/goid")
+    db, err := sql.Open("mysql", "root:password@tcp(127.0.0.1:3306)/digital_tool_box")
     if err != nil {
         panic(err)
     }
@@ -39,22 +39,28 @@ func main() {
     // fmt.Println("Connected!")
     defer db.Close()
 
-    // Create a new http.Transport with TLS settings
-	// tr := &http.Transport{
-	// 	TLSClientConfig: &tls.Config{
-	// 		InsecureSkipVerify: false, // InsecureSkipVerify should be set to false in production
-	// 	},
-	// }
+    if os.Getenv("APP_LIVE") == "1" {
+        // Create a new http.Transport with TLS settings
 
-	// Create a new http.Client using the transport
-	// client := &http.Client{
-	// 	Transport: tr,
-	// }
+        // tr := &http.Transport{
+        // 	TLSClientConfig: &tls.Config{
+        // 		InsecureSkipVerify: false, // InsecureSkipVerify should be set to false in production
+        // 	},
+        // }
 
-    // Initialize the Gin router
+        // // Create a new http.Client using the transport
+        // client := &http.Client{
+        // 	Transport: tr,
+        // }
+    } 
+	
+
+    // Initialize the Chi router
     router := chi.NewRouter()
+
+    // Middlewares
     //router.Use(goid.VerifyCertificateMiddleware())
-    //router.Use(goid.LogMiddleware())
+    router.Use(goid.AuthorizationMiddleware)
 
 	// Define a handler function for a GET request to the root URL
 	router.Get("/", goid.HomeCheck)
@@ -76,11 +82,23 @@ func main() {
 
 	})
 
+    router.Post("/reset-token", func(w http.ResponseWriter, r *http.Request) {
+        fmt.Println("/reset-token")
+        var tokenRequest goid.GenrateTokenRequest
+        err := json.NewDecoder(r.Body).Decode(&tokenRequest)
+        if err != nil {
+            // TODO
+            fmt.Println("Error:", err)
+        }
+        fmt.Println("Resetting Token for UID:", tokenRequest.UID)
+        goid.GenerateAccessToken(db, tokenRequest.UID)
+    })
+
 	/**
 		Login
         Requires JSON body, no query params
 	 */
-    router.Post("/login", func (w http.ResponseWriter, r *http.Request) {
+    router.Post("/users/login", func (w http.ResponseWriter, r *http.Request) {
         
         var login goid.LoginRequest
         err := json.NewDecoder(r.Body).Decode(&login)
@@ -198,64 +216,43 @@ func main() {
         w.Write([]byte(fmt.Sprintf("key:%s", key)))
     })
 
-    router.Post("/users/register", registerUser)
+    router.Post("/users/register", func(w http.ResponseWriter, r *http.Request) {
 
-    func registerUser(w http.ResponseWriter, r *http.Request) {
-        // Check the authorization header
-        authHeader := r.Header.Get("Authorization")
-        if !isAuthorized(authHeader) {
-            w.WriteHeader(http.StatusUnauthorized)
-            return
+        if (os.Getenv("APP_LIVE") == "1"){
+            // Check the authorization header
+            authHeader := r.Header.Get("Authorization")
+            if !goid.IsAuthorized(authHeader) {
+                w.WriteHeader(http.StatusUnauthorized)
+                return
+            }
         }
-    
+
         // Parse the request body
-        var user User
-        err := json.NewDecoder(r.Body).Decode(&user)
+        var userRequest goid.UserCreateRequest
+        err := json.NewDecoder(r.Body).Decode(&userRequest)
         if err != nil {
             w.WriteHeader(http.StatusBadRequest)
             return
         }
-    
-        // Validate email format
-        if !isValidEmail(user.Email) {
+
+        if _, err = goid.IsValidUserCreateRequest(userRequest); err != nil {
             w.WriteHeader(http.StatusBadRequest)
-            fmt.Fprintf(w, "Invalid email format")
+            fmt.Fprintf(w, "Invalid userRequest. Registration with error:")
+            fmt.Fprintf(w, err.Error())
             return
         }
-    
-        // Check if password and confirm_password match
-        if user.Password != user.ConfirmPassword {
-            w.WriteHeader(http.StatusBadRequest)
-            fmt.Fprintf(w, "Passwords do not match")
-            return
-        }
-    
+
+        goid.CreateUser(db, userRequest)
+
         // Registration successful
         w.WriteHeader(http.StatusCreated)
         fmt.Fprintf(w, "User registered successfully")
-    }
-    
-    func isAuthorized(authHeader string) bool {
-        // TODO: Implement your authorization logic here
-        // You can check if the authHeader is valid and matches your expected format
-        // For example, you might check if it contains a valid access token or JWT
-    
-        // Placeholder authorization logic
-        return strings.HasPrefix(authHeader, "Bearer")
-    }
-    
-    func isValidEmail(email string) bool {
-        // Simple email format validation using regex
-        // You can implement more comprehensive email validation if needed
-        emailRegex := `^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$`
-        match, _ := regexp.MatchString(emailRegex, email)
-        return match
-    }
+    })
 
 	/**
 		Logout
 	 */
-    router.Get("/logout", func(w http.ResponseWriter, r *http.Request) {
+    router.Get("/users/logout", func(w http.ResponseWriter, r *http.Request) {
         // TODO: Invalidate the access token for the current user
         //c.JSON(200, gin.H{})
     })
