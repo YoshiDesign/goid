@@ -27,7 +27,7 @@ func main() {
 	// 	DBName: os.Getenv("DBNAME"),
     // }
 
-    // Connect to the database - Currently uses a remote DB host (Local VM - Homestead)
+    // Connect to the database
     db, err := sql.Open("mysql", "root:password@tcp(127.0.0.1:3306)/digital_tool_box")
     if err != nil {
         panic(err)
