@@ -1,4 +1,5 @@
 *.exe
+goid
 .env
 GPT-Output/
 var/
