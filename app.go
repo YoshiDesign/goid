@@ -258,6 +258,7 @@ func main() {
     })
 
     // Start the server
+    fmt.Println("we're back, baby!")
     http.ListenAndServe(":8081", router)
     //http.ListenAndServeTLS(":8081", "/home/yoshi/.ssh/newcert.pem", "/home/yoshi/.ssh/newkey.pem", router)
 
